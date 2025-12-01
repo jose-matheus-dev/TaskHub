@@ -1,4 +1,75 @@
 services:
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: .
+      dockerfile: ./apps/api-gateway/Dockerfile
+      target: development
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    ports:
+      - '3000:3000'
+    env_file:
+      - path: .env
+        required: true
+      - path: ./apps/api-gateway/.env
+        required: false
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - taskhub-network
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api-gateway/
+          target: /taskhub/apps/api-gateway/
+
+        - action: rebuild
+          path: ./apps/api-gateway/package.json
+        - action: rebuild
+          path: ./apps/api-gateway/Dockerfile
+        - action: rebuild
+          path: .dockerignore
+  auth-service:
+    container_name: auth-service
+    tty: true
+    build:
+      context: .
+      dockerfile: ./apps/auth-service/Dockerfile
+      target: development
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    env_file:
+      - path: .env
+        required: true
+      - path: ./apps/auth-service/.env
+        required: false
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - taskhub-network
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/auth-service/
+          target: /taskhub/apps/auth-service/
+
+        - action: rebuild
+          path: ./apps/auth-service/package.json
+        - action: rebuild
+          path: ./apps/auth-service/Dockerfile
+        - action: rebuild
+          path: .dockerignore
+
   postgres:
     image: postgres:18.1-alpine
     container_name: postgres
@@ -11,9 +82,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${PG_DB}
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
 
   rabbitmq:
     image: rabbitmq:4.2.1-management-alpine
