@@ -1,5 +1,6 @@
 FROM node:24.11.1-alpine AS base
 
+ARG APP=api-gateway
 ARG UID
 ARG GID
 
@@ -14,17 +15,17 @@ USER node
 
 WORKDIR /taskhub
 
-COPY --chown=node package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY --chown=node turbo.json package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY --chown=node ./apps/${APP}/package.json ./apps/${APP}/
+COPY --chown=node ./packages/ ./packages/
 
-WORKDIR /taskhub/apps/api-gateway
-
-COPY --chown=node ./apps/api-gateway/package.json ./
-
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store,uid=$UID,gid=$GID pnpm fetch 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store,uid=$UID,gid=$GID pnpm i --offline --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store,uid=${UID},gid=${GID} pnpm fetch
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store,uid=${UID},gid=${GID} pnpm i --offline --frozen-lockfile
 
 FROM base AS development
 
-COPY --chown=node ./apps/api-gateway/ .
+COPY --chown=node ./apps/${APP}/ ./apps/${APP}/
+RUN  --mount=type=cache,id=turbo,target=/taskhub/.turbo,uid=${UID},gid=${GID} pnpm turbo build
 
-CMD ["pnpm", "--filter=api-gateway", "dev"]
+WORKDIR /taskhub/apps/${APP}
+CMD ["pnpm", "dev"]
