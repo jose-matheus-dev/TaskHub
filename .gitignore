@@ -4,7 +4,7 @@ node_modules/
 .vercel/
 
 .env*
-!.env.example
+!.env.schema
 *.pem
 
 dist/
