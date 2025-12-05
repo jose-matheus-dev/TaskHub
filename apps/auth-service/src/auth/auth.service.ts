@@ -1,10 +1,9 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Token, User } from '@repo/typeorm';
+import { LoginDTO, RefreshDTO, RegisterDTO } from '@repo/types';
 import bcrypt from 'bcrypt';
-import { LoginDto, RefreshDto, RegisterDto } from 'src/auth/auth.dto';
-import { Token } from 'src/models/token.entity';
-import { User } from 'src/models/user.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -15,7 +14,7 @@ export class AuthService {
     @InjectRepository(Token) private readonly tokenRepo: Repository<Token>,
   ) {}
 
-  async register({ username, email, password }: RegisterDto) {
+  async register({ username, email, password }: RegisterDTO) {
     const user = await this.userRepo.findOne({ where: [{ email }, { username }] });
     if (user) throw new ConflictException(`${user.email === email ? 'Email' : 'Username'} already in use.`);
 
@@ -24,7 +23,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
     return await this.userRepo.save({ username, email, password: hashedPassword });
   }
-  async login({ email, password }: LoginDto) {
+  async login({ email, password }: LoginDTO) {
     const user = await this.userRepo.findOne({ where: { email } });
 
     const isValid = user && (await bcrypt.compare(password, user.password));
@@ -32,7 +31,7 @@ export class AuthService {
 
     await this.tokenRepo.delete({ userId: user.id });
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, username: user.username };
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15min' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
@@ -42,8 +41,8 @@ export class AuthService {
 
     return { accessToken, refreshToken };
   }
-  async refresh({ refreshToken }: RefreshDto) {
-    let payload: { sub: string; email: string };
+  async refresh({ refreshToken }: RefreshDTO) {
+    let payload: { sub: string; username: string };
     try {
       payload = this.jwtService.verify(refreshToken);
     } catch (error) {
@@ -56,7 +55,7 @@ export class AuthService {
     const isValidToken = await bcrypt.compare(refreshToken, storedToken.token);
     if (!isValidToken) throw new UnauthorizedException('Invalid refresh token.');
 
-    payload = { sub: payload.sub, email: payload.email };
+    payload = { sub: payload.sub, username: payload.username };
     return { accessToken: this.jwtService.sign(payload, { expiresIn: '15min' }) };
   }
 }

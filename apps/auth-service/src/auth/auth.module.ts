@@ -3,8 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { ClientsModule, RmqOptions, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Token } from 'src/models/token.entity';
-import { User } from 'src/models/user.entity';
+import { Token, User } from '@repo/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
